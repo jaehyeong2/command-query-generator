@@ -1,3 +1,3 @@
 rootProject.name = "command-query-generator"
 
-include("annotations", "processor", "app")
+include("annotations", "processors", "app")
