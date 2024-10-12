@@ -1,13 +1,21 @@
 package jjfactory.command_query_generator
 
+import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
+import java.util.concurrent.Flow
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.RoundEnvironment
+import javax.annotation.processing.SupportedAnnotationTypes
+import javax.annotation.processing.SupportedSourceVersion
+import javax.lang.model.SourceVersion
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.TypeElement
 import javax.lang.model.element.VariableElement
 import javax.tools.Diagnostic
 
+@AutoService(Flow.Processor::class)
+@SupportedAnnotationTypes("jjfactory.command_query_generator.GenerateCommand")
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 class CommandProcessor: AbstractProcessor() {
     @OptIn(DelicateKotlinPoetApi::class)
     override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
@@ -25,7 +33,7 @@ class CommandProcessor: AbstractProcessor() {
             val commandClassName = "${originalClassName}Command"
 
             val classBuilder = TypeSpec.classBuilder(commandClassName)
-                .addKdoc("자동 생성된 Command 클래스입니다.")
+                .addKdoc("auto created class")
 
             val constructorBuilder = FunSpec.constructorBuilder()
 
