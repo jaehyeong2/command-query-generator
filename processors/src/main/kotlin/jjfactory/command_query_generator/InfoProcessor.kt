@@ -17,52 +17,73 @@ import javax.tools.Diagnostic
 @SupportedAnnotationTypes("jjfactory.command_query_generator.GenerateInfo")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 class InfoProcessor: AbstractProcessor() {
-    @OptIn(DelicateKotlinPoetApi::class)
+
     override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
         val annotatedElements = roundEnv.getElementsAnnotatedWith(GenerateInfo::class.java)
 
         for (element in annotatedElements) {
             if (element.kind != ElementKind.CLASS) {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "@GenerateCQuery can only be applied to classes.")
-                return true
+                processingEnv.messager.printMessage(
+                    Diagnostic.Kind.ERROR,
+                    "@GenerateCommand can only be applied to classes.",
+                    element
+                )
+                continue
             }
 
             val classElement = element as TypeElement
             val packageName = processingEnv.elementUtils.getPackageOf(classElement).qualifiedName.toString()
             val originalClassName = classElement.simpleName.toString()
-            val commandClassName = "${originalClassName}Info"
+            val infoClassName = "${originalClassName}Info"
 
-            val classBuilder = TypeSpec.classBuilder(commandClassName)
-                .addKdoc("auto created class")
+            val annotation = classElement.getAnnotation(GenerateInfo::class.java)
+            val additionalCommands = annotation.additionalInnerClasses.toList()
 
-            val constructorBuilder = FunSpec.constructorBuilder()
+            val defaultClasses = listOf("Detail", "List")
 
-            for (enclosed in classElement.enclosedElements) {
-                if (enclosed.kind == ElementKind.FIELD) {
-                    val variableElement = enclosed as VariableElement
-                    val propertyName = variableElement.simpleName.toString()
-                    val propertyType = variableElement.asType().asTypeName()
+            val allCommands = defaultClasses + additionalCommands
 
-                    classBuilder.addProperty(
-                        PropertySpec.builder(propertyName, propertyType)
-                            .initializer(propertyName)
-                            .build()
-                    )
+            // 원본 클래스의 필드 정보 수집
+            val fields = classElement.enclosedElements
+                .filter { it.kind == ElementKind.FIELD }
+                .map { it as VariableElement }
+
+            val classBuilder = TypeSpec.classBuilder(infoClassName)
+
+            for (command in allCommands) {
+                val dataClassBuilder = TypeSpec.classBuilder(command)
+                    .addModifiers(KModifier.DATA)
+
+                val constructorBuilder = FunSpec.constructorBuilder()
+                val properties = mutableListOf<PropertySpec>()
+
+                fields.forEach { field ->
+                    val propertyName = field.simpleName.toString()
+                    val propertyType = field.asType().asTypeName()
 
                     constructorBuilder.addParameter(propertyName, propertyType)
+                    properties += PropertySpec.builder(propertyName, propertyType)
+                        .initializer(propertyName)
+                        .build()
                 }
+
+                dataClassBuilder.primaryConstructor(constructorBuilder.build())
+                dataClassBuilder.addProperties(properties)
+
+                classBuilder.addType(dataClassBuilder.build())
             }
 
-            classBuilder.primaryConstructor(constructorBuilder.build())
-
-            val file = FileSpec.builder(packageName, commandClassName)
+            val file = FileSpec.builder(packageName, infoClassName)
                 .addType(classBuilder.build())
                 .build()
 
             try {
                 file.writeTo(processingEnv.filer)
             } catch (e: Exception) {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Error generating $commandClassName: ${e.message}")
+                processingEnv.messager.printMessage(
+                    Diagnostic.Kind.ERROR,
+                    "Error generating $infoClassName: ${e.message}"
+                )
             }
         }
 

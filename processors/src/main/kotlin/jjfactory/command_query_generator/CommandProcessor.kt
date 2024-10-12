@@ -17,14 +17,18 @@ import javax.tools.Diagnostic
 @SupportedAnnotationTypes("jjfactory.command_query_generator.GenerateCommand")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 class CommandProcessor: AbstractProcessor() {
-    @OptIn(DelicateKotlinPoetApi::class)
+
     override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
         val annotatedElements = roundEnv.getElementsAnnotatedWith(GenerateCommand::class.java)
 
         for (element in annotatedElements) {
             if (element.kind != ElementKind.CLASS) {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "@GenerateCommand can only be applied to classes.")
-                return true
+                processingEnv.messager.printMessage(
+                    Diagnostic.Kind.ERROR,
+                    "@GenerateCommand can only be applied to classes.",
+                    element
+                )
+                continue
             }
 
             val classElement = element as TypeElement
@@ -32,28 +36,61 @@ class CommandProcessor: AbstractProcessor() {
             val originalClassName = classElement.simpleName.toString()
             val commandClassName = "${originalClassName}Command"
 
+            val annotation = classElement.getAnnotation(GenerateCommand::class.java)
+            val additionalCommands = annotation.additionalInnerClasses.toList()
+
+            val defaultCommands = listOf("Create", "Modify")
+
+            val allCommands = defaultCommands + additionalCommands
+
+            // 원본 클래스의 필드 정보 수집
+            val fields = classElement.enclosedElements
+                .filter { it.kind == ElementKind.FIELD }
+                .map { it as VariableElement }
+
             val classBuilder = TypeSpec.classBuilder(commandClassName)
-                .addKdoc("auto created class")
 
-            val constructorBuilder = FunSpec.constructorBuilder()
+            for (command in allCommands) {
+                val dataClassBuilder = TypeSpec.classBuilder(command)
+                    .addModifiers(KModifier.DATA)
 
-            for (enclosed in classElement.enclosedElements) {
-                if (enclosed.kind == ElementKind.FIELD) {
-                    val variableElement = enclosed as VariableElement
-                    val propertyName = variableElement.simpleName.toString()
-                    val propertyType = variableElement.asType().asTypeName()
+                val constructorBuilder = FunSpec.constructorBuilder()
+                val properties = mutableListOf<PropertySpec>()
 
-                    classBuilder.addProperty(
-                        PropertySpec.builder(propertyName, propertyType)
-                            .initializer(propertyName)
-                            .build()
-                    )
+                fields.forEach { field ->
+                    val propertyName = field.simpleName.toString()
+                    val propertyType = field.asType().asTypeName()
 
                     constructorBuilder.addParameter(propertyName, propertyType)
+                    properties += PropertySpec.builder(propertyName, propertyType)
+                        .initializer(propertyName)
+                        .build()
                 }
-            }
+//
+//                // 특정 커맨드에 따라 추가 메서드 생성 (예: Create 커맨드에 toEntity 메서드 추가)
+//                if (command.equals("Create", ignoreCase = true)) {
+//                    val toEntityFun = FunSpec.builder("toEntity")
+//                        .returns(ClassName(packageName, originalClassName))
+//                        .addParameter("userId", Long::class)
+//                        .addStatement(
+//                            "return %T(" +
+//                                    "userId = userId, " +
+//                                    "type = type, " +
+//                                    "title = title, " +
+//                                    "content = content, " +
+//                                    "accessLevel = accessLevel" +
+//                                    ")",
+//                            ClassName(packageName, originalClassName)
+//                        )
+//                        .build()
+//                    dataClassBuilder.addFunction(toEntityFun)
+//                }
 
-            classBuilder.primaryConstructor(constructorBuilder.build())
+                dataClassBuilder.primaryConstructor(constructorBuilder.build())
+                dataClassBuilder.addProperties(properties)
+
+                classBuilder.addType(dataClassBuilder.build())
+            }
 
             val file = FileSpec.builder(packageName, commandClassName)
                 .addType(classBuilder.build())
@@ -62,7 +99,10 @@ class CommandProcessor: AbstractProcessor() {
             try {
                 file.writeTo(processingEnv.filer)
             } catch (e: Exception) {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Error generating $commandClassName: ${e.message}")
+                processingEnv.messager.printMessage(
+                    Diagnostic.Kind.ERROR,
+                    "Error generating $commandClassName: ${e.message}"
+                )
             }
         }
 
