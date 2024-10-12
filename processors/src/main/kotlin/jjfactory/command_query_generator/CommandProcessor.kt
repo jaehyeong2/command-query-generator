@@ -9,6 +9,7 @@ import javax.annotation.processing.SupportedAnnotationTypes
 import javax.annotation.processing.SupportedSourceVersion
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.ElementKind
+import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
 import javax.lang.model.element.VariableElement
 import javax.tools.Diagnostic
@@ -43,7 +44,6 @@ class CommandProcessor: AbstractProcessor() {
 
             val allCommands = defaultCommands + additionalCommands
 
-            // 원본 클래스의 필드 정보 수집
             val fields = classElement.enclosedElements
                 .filter { it.kind == ElementKind.FIELD }
                 .map { it as VariableElement }
