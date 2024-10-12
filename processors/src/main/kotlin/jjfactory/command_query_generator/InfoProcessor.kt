@@ -37,11 +37,11 @@ class InfoProcessor: AbstractProcessor() {
             val infoClassName = "${originalClassName}Info"
 
             val annotation = classElement.getAnnotation(GenerateInfo::class.java)
-            val additionalCommands = annotation.additionalInnerClasses.toList()
+            val additionalClasses = annotation.additionalInnerClasses.toList()
 
             val defaultClasses = listOf("Detail", "List")
 
-            val allCommands = defaultClasses + additionalCommands
+            val allClasses = defaultClasses + additionalClasses
 
             // 원본 클래스의 필드 정보 수집
             val fields = classElement.enclosedElements
@@ -50,8 +50,8 @@ class InfoProcessor: AbstractProcessor() {
 
             val classBuilder = TypeSpec.classBuilder(infoClassName)
 
-            for (command in allCommands) {
-                val dataClassBuilder = TypeSpec.classBuilder(command)
+            for (initClass in allClasses) {
+                val dataClassBuilder = TypeSpec.classBuilder(initClass)
                     .addModifiers(KModifier.DATA)
 
                 val constructorBuilder = FunSpec.constructorBuilder()
@@ -64,6 +64,7 @@ class InfoProcessor: AbstractProcessor() {
                     constructorBuilder.addParameter(propertyName, propertyType)
                     properties += PropertySpec.builder(propertyName, propertyType)
                         .initializer(propertyName)
+                        .addModifiers(KModifier.PRIVATE)
                         .build()
                 }
 

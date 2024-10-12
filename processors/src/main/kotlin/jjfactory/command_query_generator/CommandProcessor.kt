@@ -64,6 +64,7 @@ class CommandProcessor: AbstractProcessor() {
                     constructorBuilder.addParameter(propertyName, propertyType)
                     properties += PropertySpec.builder(propertyName, propertyType)
                         .initializer(propertyName)
+                        .addModifiers(KModifier.PRIVATE)
                         .build()
                 }
 //
