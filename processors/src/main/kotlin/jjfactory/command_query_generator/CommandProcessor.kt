@@ -2,22 +2,15 @@ package jjfactory.command_query_generator
 
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
-import java.util.concurrent.Flow
-import javax.annotation.processing.AbstractProcessor
-import javax.annotation.processing.RoundEnvironment
-import javax.annotation.processing.SupportedAnnotationTypes
-import javax.annotation.processing.SupportedSourceVersion
-import javax.lang.model.SourceVersion
+import javax.annotation.processing.*
 import javax.lang.model.element.ElementKind
-import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
 import javax.lang.model.element.VariableElement
 import javax.tools.Diagnostic
 
-@AutoService(Flow.Processor::class)
+@AutoService(Processor::class)
 @SupportedAnnotationTypes("jjfactory.command_query_generator.GenerateCommand")
-@SupportedSourceVersion(SourceVersion.RELEASE_8)
-class CommandProcessor: AbstractProcessor() {
+class CommandProcessor : AbstractProcessor() {
 
     override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
         val annotatedElements = roundEnv.getElementsAnnotatedWith(GenerateCommand::class.java)
