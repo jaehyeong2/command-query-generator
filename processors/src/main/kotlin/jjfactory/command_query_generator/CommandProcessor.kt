@@ -52,7 +52,11 @@ class CommandProcessor : AbstractProcessor() {
 
                 fields.forEach { field ->
                     val propertyName = field.simpleName.toString()
-                    val propertyType = field.asType().asTypeName()
+                    var propertyType = field.asType().asTypeName()
+
+                    if (propertyType.toString() == "java.lang.String") {
+                        propertyType = ClassName("kotlin", "String")
+                    }
 
                     constructorBuilder.addParameter(propertyName, propertyType)
                     properties += PropertySpec.builder(propertyName, propertyType)
@@ -60,25 +64,23 @@ class CommandProcessor : AbstractProcessor() {
                         .addModifiers(KModifier.PRIVATE)
                         .build()
                 }
-//
-//                // 특정 커맨드에 따라 추가 메서드 생성 (예: Create 커맨드에 toEntity 메서드 추가)
-//                if (command.equals("Create", ignoreCase = true)) {
-//                    val toEntityFun = FunSpec.builder("toEntity")
-//                        .returns(ClassName(packageName, originalClassName))
-//                        .addParameter("userId", Long::class)
-//                        .addStatement(
-//                            "return %T(" +
-//                                    "userId = userId, " +
-//                                    "type = type, " +
-//                                    "title = title, " +
-//                                    "content = content, " +
-//                                    "accessLevel = accessLevel" +
-//                                    ")",
-//                            ClassName(packageName, originalClassName)
-//                        )
-//                        .build()
-//                    dataClassBuilder.addFunction(toEntityFun)
-//                }
+
+                if (command.equals("Create", ignoreCase = true)) {
+                    val toEntityFun = FunSpec.builder("toEntity")
+                        .returns(ClassName(packageName, originalClassName))
+
+                    val constructorParams = fields.joinToString(", ") { field ->
+                        val propertyName = field.simpleName.toString()
+                        "$propertyName = $propertyName"
+                    }
+
+                    toEntityFun.addStatement(
+                        "return %T($constructorParams)",
+                        ClassName(packageName, originalClassName)
+                    )
+
+                    dataClassBuilder.addFunction(toEntityFun.build())
+                }
 
                 dataClassBuilder.primaryConstructor(constructorBuilder.build())
                 dataClassBuilder.addProperties(properties)

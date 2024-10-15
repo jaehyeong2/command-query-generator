@@ -53,7 +53,11 @@ class InfoProcessor : AbstractProcessor() {
 
                 fields.forEach { field ->
                     val propertyName = field.simpleName.toString()
-                    val propertyType = field.asType().asTypeName()
+                    var propertyType = field.asType().asTypeName()
+
+                    if (propertyType.toString() == "java.lang.String") {
+                        propertyType = ClassName("kotlin", "String")
+                    }
 
                     constructorBuilder.addParameter(propertyName, propertyType)
                     properties += PropertySpec.builder(propertyName, propertyType)
